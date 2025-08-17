@@ -1,0 +1,116 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caribbean SimNation</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; color: #222; }
+  .dark-mode { background-color: #121212; color: #eee; }
+  #top-bar { display: flex; justify-content: space-around; padding: 10px; background-color: #444; color: #fff; }
+  #top-bar.dark-mode { background-color: #222; }
+  #game { display: flex; height: calc(100vh - 50px); }
+  #sidebar { width: 250px; background-color: #ddd; padding: 10px; overflow-y: auto; }
+  #sidebar.dark-mode { background-color: #333; color: #eee; }
+  #main { flex-grow: 1; background-color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #main.dark-mode { background-color: #1a1a1a; }
+  button { padding: 5px 10px; margin: 5px; cursor: pointer; }
+  .chart { width: 90%; max-width: 600px; height: 200px; margin: 10px; border: 1px solid #999; }
+</style>
+</head>
+<body>
+<div id="top-bar">
+  <span>Country: <span id="country-name">Jamaica</span></span>
+  <span>GDP: $<span id="gdp">15300</span>M</span>
+  <span>Treasury: $<span id="treasury">5000</span>M</span>
+  <span>Population: <span id="population">3.3</span>M</span>
+  <button id="mode-toggle">Toggle Dark/Light</button>
+</div>
+<div id="game">
+  <div id="sidebar">
+    <h3>Buildings</h3>
+    <button onclick="build('Residential')">Residential</button>
+    <button onclick="build('Commercial')">Commercial</button>
+    <button onclick="build('Industrial')">Industrial</button>
+    <button onclick="build('Power')">Power Plant</button>
+    <button onclick="build('Park')">Park</button>
+    <h3>Policies</h3>
+    <label>Tax Rate: <input type="range" id="tax" min="0" max="50" value="20">%</label>
+    <h3>Country Selector</h3>
+    <select id="country-select" onchange="changeCountry()">
+      <option>Jamaica</option>
+      <option>Barbados</option>
+      <option>Trinidad and Tobago</option>
+      <option>Bahamas</option>
+      <option>Haiti</option>
+      <option>Dominican Republic</option>
+    </select>
+  </div>
+  <div id="main">
+    <h2 id="leader-name">Leader: Andrew Holness</h2>
+    <div class="chart" id="gdp-chart">[GDP Chart]</div>
+    <div class="chart" id="pop-chart">[Population Chart]</div>
+    <div class="chart" id="treasury-chart">[Treasury Chart]</div>
+  </div>
+</div>
+<script>
+let dark = false;
+document.getElementById('mode-toggle').onclick = () => {
+  dark = !dark;
+  document.body.classList.toggle('dark-mode', dark);
+  document.getElementById('top-bar').classList.toggle('dark-mode', dark);
+  document.getElementById('sidebar').classList.toggle('dark-mode', dark);
+  document.getElementById('main').classList.toggle('dark-mode', dark);
+};
+
+const countries = {
+  "Jamaica": {gdp:15300, leader:"Andrew Holness", population:3.3},
+  "Barbados": {gdp:5800, leader:"Mia Mottley", population:0.3},
+  "Trinidad and Tobago": {gdp:23000, leader:"Keith Rowley", population:1.4},
+  "Bahamas": {gdp:12500, leader:"Philip Davis", population:0.4},
+  "Haiti": {gdp:900, leader:"Ariel Henry", population:11.5},
+  "Dominican Republic": {gdp:9600, leader:"Luis Abinader", population:11.0}
+};
+
+let currentCountry = "Jamaica";
+
+function changeCountry(){
+  const select = document.getElementById('country-select');
+  currentCountry = select.value;
+  const data = countries[currentCountry];
+  document.getElementById('country-name').innerText = currentCountry;
+  document.getElementById('leader-name').innerText = "Leader: " + data.leader;
+  document.getElementById('gdp').innerText = data.gdp;
+  document.getElementById('population').innerText = data.population;
+}
+
+function build(type){
+  const data = countries[currentCountry];
+  let cost = 0;
+  if(type==="Residential") cost = 50;
+  if(type==="Commercial") cost = 100;
+  if(type==="Industrial") cost = 120;
+  if(type==="Power") cost = 200;
+  if(type==="Park") cost = 30;
+  if(data.gdp >= cost){
+    data.gdp += Math.round(cost*0.5); // increase GDP slightly
+    document.getElementById('gdp').innerText = data.gdp;
+    alert(type + " built in " + currentCountry + "! GDP increased.");
+  } else {
+    alert("Not enough GDP to build " + type);
+  }
+}
+
+// Simple adaptive economy: GDP decreases slightly if tax > 30%
+setInterval(()=>{
+  const tax = document.getElementById('tax').value;
+  const data = countries[currentCountry];
+  if(tax>30){
+    data.gdp -= Math.round(data.gdp*0.01);
+    document.getElementById('gdp').innerText = data.gdp;
+  }
+}, 5000);
+</script>
+</body>
+</html>
