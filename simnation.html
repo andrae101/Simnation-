@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SimNation: City & Economy</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' ry='10' fill='%23121a2b'/%3E%3Cpath d='M8 52h48v4H8z' fill='%235e6b8c'/%3E%3Cpath d='M14 48V26h8v22zm14 0V12h8v36zm14 0V34h8v14z' fill='%236ee7ff'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0d1222;--bg2:#0a0f1f;--panel:#121a2b;--panel-b:#273150;
+  --text:#e8ecff;--muted:#a3acc7;--accent:#6ee7ff;--accent2:#a78bfa;
+  --good:#66f2ba;--warn:#ffd166;--bad:#ff7a7a;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:radial-gradient(1200px 800px at 15% 10%,#141a3b 0,#0d1222 60%,#0a0f1f 100%);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif}
+.app{max-width:1320px;margin:0 auto;padding:14px;display:grid;grid-template-columns:280px 1fr;gap:12px}
+header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:clamp(18px,3.8vw,28px);letter-spacing:.4px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.menu{display:flex;gap:6px;flex-wrap:wrap}
+.btn{background:linear-gradient(180deg,#1b2341,#141a33);color:var(--text);border:1px solid #2a345c;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;transition:transform .06s, box-shadow .2s, border-color .2s;box-shadow:0 0 0 0 rgba(110,231,255,0)}
+.btn:hover{transform:translateY(-1px);box-shadow:0 10px 30px -12px rgba(110,231,255,.55);border-color:#3b4674}
+.sidebar{display:flex;flex-direction:column;gap:12px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid var(--panel-b);border-radius:14px;padding:12px}
+.titlebar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sub{color:var(--muted);font-size:12px}
+.tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tool{display:flex;align-items:center;justify-content:center;padding:10px;border-radius:12px;border:1px solid #2a3358;background:#0c1226;cursor:pointer;font-weight:700;gap:6px}
+.tool.active{outline:2px solid var(--accent)}
+.cost{font-size:11px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.kpi{display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid #262e54}
+.kpi .label{font-size:12px;color:var(--muted)}
+.kpi .value{font-weight:800;letter-spacing:.4px}
+.kpi .delta{font-size:12px}
+.good{color:var(--good)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.gridwrap{position:relative}
+canvas#city{width:100%;aspect-ratio:16/9;background:linear-gradient(180deg,#0b1124,#0a0f1f);border-radius:12px;border:1px solid #222a4a;display:block}
+.overlay{position:absolute;inset:10px;pointer-events:none;display:flex;align-items:flex-start;justify-content:space-between}
+.legend{display:flex;gap:6px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid #283056;background:rgba(255,255,255,.05);font-size:12px}
+.badge{width:12px;height:12px;border-radius:3px}
+.badge.res{background:#59d66e}.badge.com{background:#6ee7ff}.badge.ind{background:#ffd166}.badge.pow{background:#a78bfa}.badge.road{background:#7e8bb4}.badge.park{background:#66f2ba}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+meter{width:120px;height:10px}
+.feed{max-height:240px;overflow:auto;font-size:14px;display:flex;flex-direction:column;gap:8px}
+.feed .item{padding:8px 10px;border:1px solid #22284a;border-radius:10px;background:rgba(255,255,255,.03)}
+.chart{width:100%;height:220px;background:linear-gradient(180deg,#0f142a,#0c1224);border-radius:12px;border:1px solid #22284a}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.footer{grid-column:1/-1;text-align:center;color:#8b93b4;font-size:12px;margin:6px 0 16px}
+.slider{accent-color:#7acbff}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <h1>SimNation</h1>
+      <span class="pill" id="datePill">Jan • Year 1</span>
+      <span class="pill">Speed: <strong id="speedLabel">1x</strong></span>
+      <span class="pill">Difficulty: <strong id="diffLabel">Normal</strong></span>
+    </div>
+    <div class="menu">
+      <button class="btn" id="pauseBtn">⏸ Pause</button>
+      <button class="btn" id="s1">▶ 1x</button>
+      <button class="btn" id="s2">⏩ 2x</button>
+      <button class="btn" id="s4">⏭ 4x</button>
+      <button class="btn" id="saveBtn">💾 Save</button>
+      <button class="btn" id="loadBtn">⬆ Load</button>
+      <button class="btn" id="newBtn">↻ New</button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="panel">
+      <div class="titlebar">
+        <h3 style="margin:0">Build Tools</h3>
+        <span class="sub">Click tiles to place. Roads connect zones. Power plants add capacity.</span>
+      </div>
+      <div class="tools" id="tools"></div>
+      <div class="sub" id="hint">Tip: Start with roads, some Residential near Parks, add Commercial and Industrial, then a Power Plant.</div>
+    </div>
+
+    <div class="panel">
+      <div class="titlebar"><h3 style="margin:0">City Policy</h3><span class="sub">Affects demand, jobs & finances</span></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label>Tax Rate: <strong id="taxLbl">10%</strong><input id="tax" class="slider" type="range" min="0" max="30" value="10"></label>
+        <label>Interest Rate: <strong id="rateLbl">3.00%</strong><input id="rate" class="slider" type="range" min="0" max="1200" value="300"></label>
+        <label>Services (Health & Edu): <strong id="svcLbl">Medium</strong><input id="svc" class="slider" type="range" min="0" max="2" value="1"></label>
+      </div>
+      <div class="titlebar" style="margin-top:8px"><h3 style="margin:0">Emergency Cards</h3><span class="sub">Cooldowns apply</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn" id="stim">🏗 Stimulus</button>
+        <button class="btn" id="antiInfl">🏦 Anti-Inflation</button>
+        <button class="btn" id="green">🌿 Green Push</button>
+        <button class="btn" id="tour">🏖 Tourism Drive</button>
+      </div>
+      <div class="sub" id="cardStatus">All cards ready.</div>
+    </div>
+
+    <div class="panel">
+      <div class="titlebar"><h3 style="margin:0">City Status</h3></div>
+      <div class="kpis" id="kpis"></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="panel">
+      <div class="titlebar"><h3 style="margin:0">City View</h3><span class="sub">Click to build. Hold Shift to demolish (refund 40%).</span></div>
+      <div class="gridwrap">
+        <canvas id="city" width="1280" height="720" aria-label="City grid"></canvas>
+        <div class="overlay">
+          <div class="legend">
+            <span class="pill"><i class="badge res"></i> Residential</span>
+            <span class="pill"><i class="badge com"></i> Commercial</span>
+            <span class="pill"><i class="badge ind"></i> Industrial</span>
+            <span class="pill"><i class="badge pow"></i> Power</span>
+            <span class="pill"><i class="badge park"></i> Park</span>
+            <span class="pill"><i class="badge road"></i> Road</span>
+          </div>
+          <div class="controls">
+            <span class="pill">Demand — R:<strong id="dR">0</strong> C:<strong id="dC">0</strong> I:<strong id="dI">0</strong></span>
+            <span class="pill">Power:<strong id="powerLbl">0/0</strong></span>
+            <span class="pill">Pollution:<strong id="pollLbl">0</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="titlebar"><h3 style="margin:0">Economy & Budget</h3><span class="sub">Rolling 6-year trends</span></div>
+        <canvas id="chart" class="chart"></canvas>
+      </div>
+      <div class="panel">
+        <div class="titlebar"><h3 style="margin:0">News</h3><span class="sub">Events & results</span></div>
+        <div id="feed" class="feed"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="footer">Save as <em>simnation.html</em> and open in your browser. Keyboard: [Space] pause • [1][2][3] speed • [Shift+Click] bulldoze.</div>
+</div>
+
+<script>
+(() => {
+  // --- Helpers ---
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const pick = a => a[(Math.random()*a.length)|0];
+  const rand = (a,b)=>a+Math.random()*(b-a);
+
+  // --- Enums for tiles ---
+  const T = { EMPTY:0, RES:1, COM:2, IND:3, POWER:4, PARK:5, ROAD:6 };
+  const colors = {
+    [T.EMPTY]:'#0c1124',
+    [T.ROAD]:'#6b778f',
+    [T.RES] :'#59d66e',
+    [T.COM] :'#6ee7ff',
+    [T.IND] :'#ffd166',
+    [T.POWER]:'#a78bfa',
+    [T.PARK] :'#66f2ba'
+  };
+  const costs = { [T.RES]:60,[T.COM]:80,[T.IND]:90,[T.POWER]:200,[T.PARK]:40,[T.ROAD]:10 };
+  const upkeep = { [T.RES]:1,[T.COM]:1,[T.IND]:2,[T.POWER]:-6,[T.PARK]:1,[T.ROAD]:0.2 };
+
+  // --- State ---
+  const S = {
+    // time
+    month:0, year:1, speed:1, paused:false,
+    // city
+    w:24, h:14, grid:[], pop:0, jobs:0, comJobs:0, indJobs:0,
+    powerCap:0, powerUse:0, pollution:0, happiness:55,
+    // economy
+    gdp:1000, infl:3.5, unemp:8.0, approval:55, debt:30, deficit:-1.0, cash:600,
+    tax:10, rate:3.0, svc:1,
+    // demand indices
+    dR:10, dC:6, dI:6,
+    // history
+    hist:[],
+    // cards
+    cd:{stim:0,anti:0,green:0,tour:0},
+    // RNG
+    tourism:100, commodity:100
+  };
+
+  // init grid
+  for(let y=0;y<S.h;y++){
+    const row=[];
+    for(let x=0;x<S.w;x++) row.push(T.EMPTY);
+    S.grid.push(row);
+  }
+  // start roads seed
+  for(let x=2;x<S.w-2;x++) S.grid[(S.h/2|0)][x]=T.ROAD;
+
+  // --- UI Elements ---
+  const e = id=>document.getElementById(id);
+  const canvas = e('city'), ctx = canvas.getContext('2d');
+  const toolsEl = e('tools'), feed = e('feed'), chart = e('chart').getContext('2d');
+  const dR=e('dR'), dC=e('dC'), dI=e('dI'), powerLbl=e('powerLbl'), pollLbl=e('pollLbl');
+  const datePill=e('datePill'), speedLabel=e('speedLabel');
+  const tax=e('tax'), rate=e('rate'), svc=e('svc');
+  const taxLbl=e('taxLbl'), rateLbl=e('rateLbl'), svcLbl=e('svcLbl');
+
+  // --- Tools ---
+  const toolDefs = [
+    {t:T.ROAD, label:'Road', emoji:'🛣', cost:costs[T.ROAD]},
+    {t:T.RES, label:'Residential', emoji:'🏘', cost:costs[T.RES]},
+    {t:T.COM, label:'Commercial', emoji:'🏪', cost:costs[T.COM]},
+    {t:T.IND, label:'Industrial', emoji:'🏭', cost:costs[T.IND]},
+    {t:T.PARK, label:'Park', emoji:'🌳', cost:costs[T.PARK]},
+    {t:T.POWER, label:'Power', emoji:'⚡', cost:costs[T.POWER]},
+  ];
+  let currentTool=T.ROAD;
+  function renderTools(){
+    toolsEl.innerHTML='';
+    toolDefs.forEach(td=>{
+      const d=document.createElement('button');
+      d.className='tool'+(currentTool===td.t?' active':'');
+      d.innerHTML=`${td.emoji} ${td.label}<div class="cost">Cost: $${td.cost}</div>`;
+      d.onclick=()=>{ currentTool=td.t; renderTools(); };
+      toolsEl.appendChild(d);
+    });
+  }
+  renderTools();
+
+  // --- KPI render ---
+  const kpiList = [
+    {key:'cash', label:'Treasury', fmt:v=>'$'+v.toFixed(0)},
+    {key:'gdp', label:'GDP (Idx)', fmt:v=>v.toFixed(1)},
+    {key:'infl', label:'Inflation', fmt:v=>v.toFixed(1)+'%'},
+    {key:'unemp', label:'Unemployment', fmt:v=>v.toFixed(1)+'%'},
+    {key:'approval', label:'Approval', fmt:v=>v.toFixed(0)+'%'},
+    {key:'debt', label:'Debt/GDP', fmt:v=>v.toFixed(0)+'%'}
+  ];
+  function renderKPIs(){
+    const wrap=e('kpis'); wrap.innerHTML='';
+    for(const k of kpiList){
+      const now=S[k.key]; const prev=S.hist[S.hist.length-2]?.[k.key] ?? now;
+      const d=now-prev; const good = (k.key==='infl'||k.key==='unemp'||k.key==='debt'||k.key==='deficit') ? d<=0 : d>=0;
+      const div=document.createElement('div'); div.className='kpi';
+      div.innerHTML=`<div class="label">${k.label}</div>
+      <div class="value">${k.fmt(now)}</div>
+      <div class="delta ${good?'good':'bad'}">${d>=0?'▲':'▼'} ${k.fmt(Math.abs(d))}</div>`;
+      wrap.appendChild(div);
+    }
+  }
+
+  // --- City draw ---
+  function drawCity(){
+    const W=canvas.width, H=canvas.height;
+    ctx.clearRect(0,0,W,H);
+    // grid size adaptive
+    const cw = Math.floor(W/(S.w+1)), ch = Math.floor(H/(S.h+1));
+    const size = Math.min(cw,ch);
+    const ox = Math.floor((W - size*S.w)/2);
+    const oy = Math.floor((H - size*S.h)/2);
+    // background sheen
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#0b1126'); g.addColorStop(1,'#0a0f1f');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+    for(let y=0;y<S.h;y++){
+      for(let x=0;x<S.w;x++){
+        const t=S.grid[y][x];
+        const X=ox + x*size, Y=oy + y*size, r=10;
+        // tile base
+        ctx.fillStyle='rgba(255,255,255,.03)';
+        ctx.fillRect(X, Y, size-1, size-1);
+        // content
+        if(t!==T.EMPTY){
+          // glow
+          ctx.shadowColor=colors[t]; ctx.shadowBlur=12;
+          const grad=ctx.createLinearGradient(X,Y,X+size,Y+size);
+          grad.addColorStop(0, colors[t]);
+          grad.addColorStop(1, '#1b2242');
+          ctx.fillStyle=grad;
+          roundRect(ctx, X+2, Y+2, size-5, size-5, r-4, true);
+          ctx.shadowBlur=0;
+          // details
+          ctx.fillStyle='rgba(255,255,255,.12)';
+          if(t===T.ROAD){
+            ctx.fillRect(X+3, Y+size/2-3, size-10, 6);
+            ctx.fillStyle='rgba(255,255,255,.25)';
+            for(let i=6;i<size-12;i+=10) ctx.fillRect(X+3+i, Y+size/2-1, 6,2);
+          }else if(t===T.RES){
+            drawWindows(X,Y,size,3,2);
+          }else if(t===T.COM){
+            drawWindows(X,Y,size,2,3);
+          }else if(t===T.IND){
+            // stacks
+            ctx.fillRect(X+10,Y+6, size/3, size-16);
+            ctx.fillRect(X+size/2,Y+10, size/3, size-20);
+            ctx.fillStyle='rgba(0,0,0,.15)'; ctx.fillRect(X+10,Y+6, size/3, 8);
+          }else if(t===T.POWER){
+            ctx.beginPath(); ctx.arc(X+size/2,Y+size/2, size/3, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle='#0b0f1e'; ctx.fillRect(X+size/2-2, Y+8, 4, size-16);
+          }else if(t===T.PARK){
+            ctx.fillStyle='rgba(0,0,0,.15)'; ctx.beginPath();
+            ctx.arc(X+size/2, Y+size/2, size/3, 0, Math.PI*2); ctx.fill();
+          }
+        }
+        // grid lines faint
+        ctx.strokeStyle='rgba(255,255,255,.04)'; ctx.strokeRect(X,Y,size-1,size-1);
+      }
+    }
+    // preview ghost
+    if(mouse.inside){
+      const cw = Math.floor(W/(S.w+1)), ch = Math.floor(H/(S.h+1));
+      const size = Math.min(cw,ch);
+      const ox = Math.floor((W - size*S.w)/2);
+      const oy = Math.floor((H - size*S.h)/2);
+      const X=ox + mouse.gx*size, Y=oy + mouse.gy*size;
+      ctx.fillStyle='rgba(255,255,255,.12)';
+      ctx.fillRect(X, Y, size-1, size-1);
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r, fill){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    if(fill) ctx.fill();
+  }
+  function drawWindows(X,Y,size,cols,rows){
+    const pad=8, w= (size-pad*2)/cols - 4, h=(size-pad*2)/rows - 4;
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const x=X+pad + c*(w+4), y=Y+pad + r*(h+4);
+      const on = ((r+c+S.month)%2)===0;
+      ctx.fillStyle= on ? 'rgba(255,230,120,.9)' : 'rgba(255,255,255,.15)';
+      ctx.fillRect(x,y,w,h);
+    }
+  }
+
+  // --- Mouse ---
+  const mouse={inside:false,gx:0,gy:0};
+  canvas.addEventListener('mousemove', ev=>{
+    const rect=canvas.getBoundingClientRect();
+    const W=canvas.width, H=canvas.height;
+    const cw=Math.floor(W/(S.w+1)), ch=Math.floor(H/(S.h+1));
+    const size=Math.min(cw,ch);
+    const ox=Math.floor((W - size*S.w)/2);
+    const oy=Math.floor((H - size*S.h)/2);
+    const x=Math.floor((ev.clientX-rect.left-ox)/size);
+    const y=Math.floor((ev.clientY-rect.top-oy)/size);
+    mouse.inside = x>=0&&x<S.w&&y>=0&&y<S.h;
+    mouse.gx = clamp(x,0,S.w-1); mouse.gy=clamp(y,0,S.h-1);
+  });
+  canvas.addEventListener('mouseleave',()=>mouse.inside=false);
+  canvas.addEventListener('click', ev=>{
+    if(!mouse.inside) return;
+    const x=mouse.gx,y=mouse.gy;
+    if(ev.shiftKey){
+      if(S.grid[y][x]!==T.EMPTY){
+        const refund = Math.floor((costs[S.grid[y][x]]||0)*0.4);
+        S.cash += refund; S.grid[y][x]=T.EMPTY; log(`Bulldozed. Refund $${refund}.`);
+      }
+      return;
+    }
+    if(S.grid[y][x]!==T.EMPTY){ log('Tile occupied.', 'warn'); return; }
+    const c = costs[currentTool]||0;
+    if(S.cash < c){ log('Not enough funds.', 'warn'); return; }
+    S.cash -= c; S.grid[y][x]=currentTool;
+    log(`Built ${toolDefs.find(t=>t.t===currentTool).label} for $${c}.`);
+  });
+
+  // --- Policy sliders ---
+  function updatePolicyLabels(){
+    taxLbl.textContent = tax.value+'%';
+    rateLbl.textContent = (rate.value/100).toFixed(2)+'%';
+    svcLbl.textContent = ['Low','Medium','High'][+svc.value];
+  }
+  [tax,rate,svc].forEach(inp=> inp.oninput=()=>{
+    updatePolicyLabels();
+    S.tax=+tax.value; S.rate=(+rate.value)/100; S.svc=+svc.value;
+  });
+  updatePolicyLabels();
+
+  // --- Cards ---
+  e('stim').onclick = ()=>useCard('stim','🏗 Stimulus: +demand & jobs temporarily.');
+  e('antiInfl').onclick = ()=>useCard('anti','🏦 Anti-Inflation: rates up, inflation trend down briefly.');
+  e('green').onclick = ()=>useCard('green','🌿 Green Push: +parks effect, -pollution trend.');
+  e('tour').onclick = ()=>useCard('tour','🏖 Tourism Drive: boosts commercial demand for a year.');
+  function useCard(k,msg){
+    if(S.cd[k]>0){ log('Card on cooldown.', 'warn'); return; }
+    S.cd[k] = {stim:24,anti:18,green:24,tour:18}[k];
+    log(msg);
+    if(k==='stim'){ S.cash -= 120; S.dR += 4; S.dI += 3; }
+    if(k==='anti'){ S.rate += 1.0; }
+    if(k==='green'){ S.pollution = Math.max(0, S.pollution-3); }
+    if(k==='tour'){ S.tourism += 8; }
+  }
+
+  // --- Simulation ---
+  function stepMonth(){
+    // cooldowns
+    for(const k in S.cd) if(S.cd[k]>0) S.cd[k]--;
+
+    // city aggregates
+    const counts = { [T.RES]:0,[T.COM]:0,[T.IND]:0,[T.POWER]:0,[T.PARK]:0,[T.ROAD]:0 };
+    for(let y=0;y<S.h;y++) for(let x=0;x<S.w;x++){
+      const t=S.grid[y][x]; if(counts[t]!==undefined) counts[t]++;
+    }
+
+    // power
+    S.powerCap = counts[T.POWER]*120;
+    S.powerUse = counts[T.RES]*2 + counts[T.COM]*3 + counts[T.IND]*4;
+    const powerOK = S.powerUse <= S.powerCap;
+
+    // demand mechanics
+    const roadFactor = counts[T.ROAD] ? 1 : 0.6;
+    const parkBonus = counts[T.PARK]*0.2;
+    const rateDrag = (S.rate-3)*0.5;
+    const taxDrag = (S.tax-10)*0.3;
+    const svcBoost = S.svc*1.0;
+    S.dR = clamp(10 + parkBonus + svcBoost - rateDrag - Math.max(0,taxDrag) + (powerOK?0: -6), 0, 30);
+    S.dC = clamp(8 + roadFactor + S.tourism/80 - rateDrag - taxDrag + (powerOK?0:-5), 0, 30);
+    S.dI = clamp(8 + roadFactor - rateDrag*1.1 - taxDrag*0.6 + (powerOK?0:-8), 0, 30);
+
+    // population and jobs
+    const newHomes = Math.min(S.dR, counts[T.RES]);
+    const newCom = Math.min(S.dC, counts[T.COM]);
+    const newInd = Math.min(S.dI, counts[T.IND]);
+    S.pop = counts[T.RES]*120 + newHomes*30;
+    S.comJobs = counts[T.COM]*90 + newCom*20;
+    S.indJobs = counts[T.IND]*120 + newInd*30;
+    const totalJobs = S.comJobs + S.indJobs;
+    const labor = Math.max(0, S.pop*0.5); // working age approx
+    const employed = Math.min(totalJobs, labor);
+    S.unemp = clamp(100*(1 - employed/labor), 3, 35);
+
+    // GDP proxy and inflation
+    const gGrowth = (newHomes + newCom + newInd)*0.6 + (powerOK?0.5:-0.8) + rand(-0.3,0.4);
+    S.gdp = clamp(S.gdp * (1 + gGrowth/100), 200, 20000);
+    const inflDrift = (S.rate<3?0.2:-0.2) + (powerOK?0:0.6) + (S.tax<8?0.15:0) + (S.svc?0.05:0);
+    S.infl = clamp(S.infl + inflDrift + rand(-0.3,0.3), -1, 25);
+
+    // City finances
+    const revenue = (S.tax/100) * (S.gdp/10) + counts[T.RES]*0.4 + counts[T.COM]*0.7 + counts[T.IND]*0.9;
+    let maintenance = 0;
+    for(const k in upkeep) maintenance += (upkeep[k]||0)*(counts[k]||0);
+    const interest = (S.debt/100) * (S.rate/100) * 20; // rough
+    const services = (S.svc+1)*6;
+    const spend = maintenance + interest + services;
+    S.deficit = revenue - spend; // monthly
+    S.cash += S.deficit;
+    S.debt = clamp(S.debt + (S.deficit<0? Math.abs(S.deficit)/100 : -S.deficit/200), 0, 300);
+
+    // happiness & approval
+    const happ = 60 - Math.max(0,S.infl-4)*1.2 - Math.max(0,S.unemp-6)*1.5 + (powerOK?4:-8) + (S.svc*2) - (S.tax-10)*0.5 + parkBonus*0.8;
+    S.happiness = clamp(lerp(S.happiness, happ, 0.2), 5, 95);
+    S.approval = clamp(lerp(S.approval, S.happiness, 0.3) + rand(-1.2,1.2), 5, 95);
+
+    // pollution
+    S.pollution = clamp(S.pollution + counts[T.IND]*0.2 - counts[T.PARK]*0.15 - (S.svc===2?0.1:0) - (S.cd.green>0?0.2:0), 0, 100);
+
+    // events
+    maybeEvent(powerOK);
+
+    // record
+    S.hist.push({m:S.month + S.year*12, gdp:S.gdp, infl:S.infl, unemp:S.unemp, cash:S.cash, approval:S.approval});
+    if(S.hist.length>72) S.hist.shift();
+
+    // advance time
+    S.month++; if(S.month>=12){ S.month=0; S.year++; }
+  }
+
+  function maybeEvent(powerOK){
+    if(Math.random()<0.05 && !powerOK && S.powerCap>0){
+      log('⚡ Rolling blackouts due to low capacity. Build more Power!', 'warn');
+    }
+    if(Math.random()<0.03 && S.pollution>40){
+      log('🌫 Smog alert week. Parks and Green Push can help.', 'warn');
+      S.happiness -= 2;
+    }
+    if(Math.random()<0.025){
+      const shock = pick(['Storm floods a district','Port slowdown hits commerce','Festival boosts tourism','Tech meetup spurs startups']);
+      if(shock==='Storm floods a district'){ S.cash -= 60; S.gdp*=0.998; log('🌀 Storm floods a district. Emergency repairs needed.', 'warn'); }
+      if(shock==='Port slowdown hits commerce'){ S.dC = Math.max(0,S.dC-3); log('🚢 Port slowdown hits commerce this month.', 'warn'); }
+      if(shock==='Festival boosts tourism'){ S.tourism += 6; log('🎉 City festival draws visitors. Tourism up.'); }
+      if(shock==='Tech meetup spurs startups'){ S.gdp*=1.002; log('🤖 Startup scene buzz increases productivity slightly.'); }
+    }
+  }
+
+  // --- News feed ---
+  function log(msg, kind){
+    const d=document.createElement('div'); d.className='item';
+    if(kind==='warn') d.style.borderColor='#584216';
+    d.innerHTML = `<span class="pill">${months[S.month]} • Y${S.year}</span> ${msg}`;
+    feed.prepend(d);
+    while(feed.children.length>120) feed.removeChild(feed.lastChild);
+  }
+
+  // --- Chart ---
+  function drawChart(){
+    const W=chart.canvas.clientWidth, H=chart.canvas.clientHeight;
+    chart.canvas.width = W*devicePixelRatio;
+    chart.canvas.height = H*devicePixelRatio;
+    chart.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    chart.clearRect(0,0,W,H);
+    // axes
+    chart.strokeStyle='rgba(255,255,255,.08)';
+    for(let i=0;i<=4;i++){ const y=10 + (H-20)*(i/4); chart.beginPath(); chart.moveTo(30,y); chart.lineTo(W-8,y); chart.stroke(); }
+    const series = [
+      {c:'#6ee7ff', data:S.hist.map(h=>h.gdp/10)},
+      {c:'#ffd166', data:S.hist.map(h=>h.infl*10)},
+      {c:'#66f2ba', data:S.hist.map(h=>100-h.unemp)},
+      {c:'#a78bfa', data:S.hist.map(h=>h.cash/5)}
+    ];
+    let all = series.flatMap(s=>s.data);
+    let mi=Math.min(...all), ma=Math.max(...all), pad=(ma-mi)*0.15 || 1; mi-=pad; ma+=pad;
+    const plot=(data,c)=>{
+      chart.beginPath();
+      for(let i=0;i<data.length;i++){
+        const x=30 + i*(W-38)/Math.max(1,data.length-1);
+        const y=10 + (1 - (data[i]-mi)/(ma-mi))*(H-20);
+        if(i===0) chart.moveTo(x,y); else chart.lineTo(x,y);
+      }
+      chart.strokeStyle=c; chart.lineWidth=2; chart.stroke();
+    };
+    series.forEach(s=>plot(s.data,s.c));
+  }
+
+  // --- Ticker ---
+  let acc=0, last=performance.now();
+  function loop(now){
+    const dt=now-last; last=now;
+    if(!S.paused){ acc+=dt*S.speed; while(acc>800){ stepMonth(); acc-=800; } }
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // --- Render everything ---
+  function render(){
+    drawCity(); drawChart(); renderKPIs();
+    dR.textContent = S.dR.toFixed(0); dC.textContent=S.dC.toFixed(0); dI.textContent=S.dI.toFixed(0);
+    powerLbl.textContent = `${S.powerUse|0}/${S.powerCap|0}`;
+    pollLbl.textContent = S.pollution.toFixed(0);
+    datePill.textContent = `${months[S.month]} • Year ${S.year}`;
+    speedLabel.textContent = `${S.speed}x`;
+  }
+
+  // --- Controls ---
+  e('pauseBtn').onclick=()=>{ S.paused=!S.paused; log(S.paused?'⏸ Paused':'▶ Resumed'); };
+  e('s1').onclick=()=>S.speed=1;
+  e('s2').onclick=()=>S.speed=2;
+  e('s4').onclick=()=>S.speed=4;
+  e('saveBtn').onclick=()=>{ localStorage.setItem('simnation', JSON.stringify(S)); log('💾 Saved.'); };
+  e('loadBtn').onclick=()=>{
+    const s=localStorage.getItem('simnation'); if(!s){ log('No save found.','warn'); return; }
+    const obj=JSON.parse(s);
+    // avoid restoring functions, just shallow merge essential fields
+    Object.assign(S, obj);
+    log('⬆ Loaded save.');
+  };
+  e('newBtn').onclick=()=>{ if(confirm('Start a new city?')) newGame(); };
+
+  window.addEventListener('keydown', (ev)=>{
+    if(ev.key===' ') { ev.preventDefault(); S.paused=!S.paused; }
+    if(ev.key==='1') S.speed=1;
+    if(ev.key==='2') S.speed=2;
+    if(ev.key==='3') S.speed=4;
+  });
+
+  // --- New game ---
+  function newGame(){
+    const keepGrid = false;
+    const grid = keepGrid? S.grid.map(r=>r.slice()) : (()=>{
+      const g=[]; for(let y=0;y<S.h;y++){ const r=[]; for(let x=0;x<S.w;x++) r.push(T.EMPTY); g.push(r); } return g;
+    })();
+    Object.assign(S, {
+      month:0, year:1, speed:1, paused:false,
+      grid, pop:0, jobs:0, comJobs:0, indJobs:0,
+      powerCap:0, powerUse:0, pollution:0, happiness:55,
+      gdp:1000, infl:3.5, unemp:8.0, approval:55, debt:30, deficit:-1.0, cash:600,
+      tax:+tax.value, rate:(+rate.value)/100, svc:+svc.value,
+      dR:10,dC:6,dI:6, hist:[], cd:{stim:0,anti:0,green:0,tour:0},
+      tourism:100, commodity:100
+    });
+    // seed road again
+    for(let x=2;x<S.w-2;x++) S.grid[(S.h/2|0)][x]=T.ROAD;
+    for(let i=0;i<24;i++) stepMonth(); // pre-fill history
+    feed.innerHTML='';
+    log('New city Founded. Build smart, keep lights on, and balance the budget.');
+  }
+
+  // initial history
+  for(let i=0;i<24;i++) S.hist.push({m:i,gdp:S.gdp,infl:S.infl,unemp:S.unemp,cash:S.cash,approval:S.approval});
+
+  // Start
+  newGame();
+  requestAnimationFrame(loop);
+
+  // responsive canvas
+  function resize(){
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.clientWidth * dpr;
+    canvas.height = canvas.clientHeight * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  resize(); window.addEventListener('resize', resize);
+})();
+</script>
+</body>
+</html>
