@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simnation: Country Simulator</title>
+<style>
+body {
+  margin: 0;
+  font-family: 'Helvetica Neue', sans-serif;
+  background: #f0f2f5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+#game-container {
+  width: 95%;
+  max-width: 450px;
+  padding: 25px;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: white;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+h1 { font-size: 26px; margin-bottom: 10px; }
+.stat { margin: 8px 0; font-weight: bold; }
+button {
+  padding: 10px 20px;
+  margin: 10px 5px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  background-color: #ffdd59;
+  color: #333;
+  transition: transform 0.2s, background-color 0.2s;
+}
+button:hover { background-color: #ffd700; transform: scale(1.05); }
+#log { 
+  margin-top: 15px; 
+  background: rgba(255,255,255,0.2); 
+  padding: 10px; 
+  border-radius: 10px; 
+  max-height: 120px; 
+  overflow-y: auto; 
+  font-size: 12px;
+  text-align: left;
+}
+#goal { font-weight: bold; margin: 10px 0; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <h1>Simnation: Country Simulator</h1>
+
+  <div class="stat" id="money-display">Money: $1000</div>
+  <div class="stat" id="gdp-display">GDP: $5000</div>
+  <div class="stat" id="happiness-display">Happiness: 50</div>
+  <div class="stat" id="health-display">Health: 50</div>
+  <div class="stat" id="education-display">Education: 50</div>
+  <div class="stat" id="imf-display">IMF Debt: $0</div>
+  <div class="stat" id="interest-display">Interest Rate: 2%</div>
+
+  <div id="goal">Goal: Build 1 Hospital</div>
+
+  <h2>Actions</h2>
+  <button onclick="buildHospital()">Build Hospital ($200)</button>
+  <button onclick="buildSchool()">Build School ($150)</button>
+  <button onclick="improveRoads()">Improve Roads ($100)</button>
+  <button onclick="adjustInterest()">Adjust Interest Rate</button>
+  <button onclick="borrowIMF()">Borrow from IMF ($500)</button>
+  <button onclick="repayIMF()">Repay IMF Debt</button>
+
+  <div id="log">Action Log:</div>
+</div>
+
+<script>
+// Game variables
+let money = 1000;
+let gdp = 5000;
+let happiness = 50;
+let health = 50;
+let education = 50;
+let imfDebt = 0;
+let interestRate = 2;
+
+// Goals
+let goals = [
+  {text: "Build 1 Hospital", type:"hospital", completed:false, reward:50},
+  {text: "Build 1 School", type:"school", completed:false, reward:40},
+  {text: "Improve Roads", type:"roads", completed:false, reward:30}
+];
+let currentGoalIndex = 0;
+
+function updateGoal() {
+  if(currentGoalIndex < goals.length){
+    document.getElementById("goal").innerText = "Goal: " + goals[currentGoalIndex].text;
+  } else {
+    document.getElementById("goal").innerText = "All goals completed!";
+  }
+}
+
+// Display update
+function updateDisplay() {
+  document.getElementById("money-display").innerText = "Money: $" + money;
+  document.getElementById("gdp-display").innerText = "GDP: $" + gdp;
+  document.getElementById("happiness-display").innerText = "Happiness: " + happiness;
+  document.getElementById("health-display").innerText = "Health: " + health;
+  document.getElementById("education-display").innerText = "Education: " + education;
+  document.getElementById("imf-display").innerText = "IMF Debt: $" + imfDebt;
+  document.getElementById("interest-display").innerText = "Interest Rate: " + interestRate + "%";
+  updateGoal();
+}
+
+// Action Log
+function logAction(text) {
+  const logDiv = document.getElementById("log");
+  logDiv.innerHTML = text + "<br>" + logDiv.innerHTML;
+}
+
+// Random Event System
+function randomEvent() {
+  const events = [
+    {text: "Economic boom! +$200 money, +5 happiness", action:()=>{
+      money += 200; happiness += 5;
+    }},
+    {text: "Protests! -10 happiness, -$100 money", action:()=>{
+      happiness -= 10; money -= 100;
+    }},
+    {text: "Natural disaster! -20 health, -$150 money", action:()=>{
+      health -= 20; money -= 150;
+    }}
+  ];
+  if(Math.random() < 0.3){ // 30% chance of event
+    const e = events[Math.floor(Math.random()*events.length)];
+    e.action();
+    logAction("Random Event: " + e.text);
+  }
+}
+
+// Check Goal Completion
+function checkGoal(type) {
+  if(currentGoalIndex < goals.length && goals[currentGoalIndex].type === type && !goals[currentGoalIndex].completed){
+    goals[currentGoalIndex].completed = true;
+    money += goals[currentGoalIndex].reward;
+    logAction("Goal Completed: " + goals[currentGoalIndex].text + " (+$" + goals[currentGoalIndex].reward + ")");
+    currentGoalIndex++;
+  }
+}
+
+// Actions
+function buildHospital() {
+  if(money >= 200){
+    money -= 200;
+    health += 15;
+    happiness += 5;
+    gdp += 50;
+    logAction("Hospital built! Health +15, Happiness +5");
+    checkGoal("hospital");
+    randomEvent();
+    updateDisplay();
+  } else { alert("Not enough money!"); }
+}
+
+function buildSchool() {
+  if(money >= 150){
+    money -= 150;
+    education += 15;
+    happiness += 3;
+    gdp += 40;
+    logAction("School built! Education +15, Happiness +3");
+    checkGoal("school");
+    randomEvent();
+    updateDisplay();
+  } else { alert("Not enough money!"); }
+}
+
+function improveRoads() {
+  if(money >= 100){
+    money -= 100;
+    happiness += 2;
+    gdp += 30;
+    logAction("Roads improved! Happiness +2, GDP +30");
+    checkGoal("roads");
+    randomEvent();
+    updateDisplay();
+  } else { alert("Not enough money!"); }
+}
+
+// Central Bank
+function adjustInterest() {
+  let newRate = prompt("Set new interest rate (0-10%):", interestRate);
+  newRate = parseFloat(newRate);
+  if(!isNaN(newRate) && newRate >= 0 && newRate <=10){
+    interestRate = newRate;
+    logAction("Interest rate set to " + interestRate + "%");
+    gdp += Math.floor((5-interestRate)*10);
+    randomEvent();
+    updateDisplay();
+  } else { alert("Invalid rate!"); }
+}
+
+// IMF
+function borrowIMF() {
+  money += 500;
+  imfDebt += 500;
+  logAction("Borrowed $500 from IMF");
+  randomEvent();
+  updateDisplay();
+}
+
+function repayIMF() {
+  if(money >= imfDebt && imfDebt >0){
+    money -= imfDebt;
+    logAction("Repaid IMF Debt: $" + imfDebt);
+    imfDebt = 0;
+    randomEvent();
+    updateDisplay();
+  } else if(imfDebt===0){
+    alert("No IMF debt to repay.");
+  } else {
+    alert("Not enough money to repay IMF debt.");
+  }
+}
+
+// Initialize display
+updateDisplay();
+</script>
+
+</body>
+</html>
