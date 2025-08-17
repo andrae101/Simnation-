@@ -3,212 +3,167 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simnation: Democracy 4–Style Simulator</title>
+<title>Simnation: Democracy 4–Style Dashboard</title>
 <style>
 body {
   margin: 0;
   font-family: 'Helvetica Neue', sans-serif;
   background: #f0f2f5;
+}
+#dashboard {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  min-height: 100vh;
-  padding: 20px;
+  flex-direction: column;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 10px;
 }
-#game-container {
-  width: 95%;
-  max-width: 500px;
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
+#stats-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  background: #1f1f2e;
   color: white;
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-}
-h1 { font-size: 24px; text-align: center; margin-bottom: 15px; }
-.stat, #approval { margin: 6px 0; font-weight: bold; }
-button {
-  padding: 10px 20px;
-  margin: 5px 5px 10px 0;
-  border: none;
-  border-radius: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
   font-size: 14px;
-  cursor: pointer;
-  background-color: #ffdd59;
-  color: #333;
-  transition: transform 0.2s, background-color 0.2s;
 }
-button:hover { background-color: #ffd700; transform: scale(1.05); }
-#log { margin-top: 10px; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; max-height: 120px; overflow-y: auto; font-size: 12px; text-align: left;}
-#goal { font-weight: bold; margin: 10px 0; font-size: 16px; }
-.policy { margin:5px 0; font-size:14px;}
-canvas { background: rgba(255,255,255,0.2); border-radius:10px; margin-top:10px;}
+.stat { margin: 5px; }
+#main-panel { display: flex; flex-direction: column; gap: 10px; }
+.panel { background: #2f2f4f; padding: 10px; border-radius: 10px; color: white; }
+h2 { margin-top: 0; font-size: 16px; text-align: center; }
+button { width: 100%; margin: 5px 0; padding: 8px; border-radius: 8px; border: none; background-color: #ffd700; color: #333; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+button:hover { transform: scale(1.05); background-color: #ffea00; }
+#log { background: #e0e0e0; color: #000; padding: 10px; border-radius: 10px; max-height: 150px; overflow-y: auto; font-size: 12px; margin-top: 10px; }
+input[type=range] { width: 100%; }
+canvas { margin-top: 10px; background: #fff; border-radius: 10px; }
 </style>
 </head>
 <body>
 
-<div id="game-container">
-<h1>Simnation: Democracy 4–Style</h1>
+<div id="dashboard">
+  <div id="stats-bar">
+    <div class="stat" id="money">Money: $1000</div>
+    <div class="stat" id="gdp">GDP: $5000</div>
+    <div class="stat" id="happiness">Happiness: 50</div>
+    <div class="stat" id="health">Health: 50</div>
+    <div class="stat" id="education">Education: 50</div>
+    <div class="stat" id="approval">Approval: 50%</div>
+    <div class="stat" id="imf">IMF Debt: $0</div>
+    <div class="stat" id="turn">Turn: 1</div>
+  </div>
 
-<div class="stat" id="money-display">Money: $1000</div>
-<div class="stat" id="gdp-display">GDP: $5000</div>
-<div class="stat" id="happiness-display">Happiness: 50</div>
-<div class="stat" id="health-display">Health: 50</div>
-<div class="stat" id="education-display">Education: 50</div>
-<div class="stat" id="imf-display">IMF Debt: $0</div>
-<div class="stat" id="interest-display">Interest Rate: 2%</div>
-<div class="stat" id="approval">Approval Rating: 50%</div>
+  <div id="main-panel">
+    <div class="panel" id="actions">
+      <h2>Actions</h2>
+      <button onclick="buildHospital()">Build Hospital ($200)</button>
+      <button onclick="buildSchool()">Build School ($150)</button>
+      <button onclick="improveRoads()">Improve Roads ($100)</button>
+      <button onclick="adjustInterest()">Adjust Interest Rate</button>
+      <button onclick="borrowIMF()">Borrow IMF ($500)</button>
+      <button onclick="repayIMF()">Repay IMF Debt</button>
+    </div>
 
-<div id="goal">Goal: Build 1 Hospital</div>
+    <div class="panel" id="policies">
+      <h2>Policies</h2>
+      <label>Income Tax: <span id="taxValue">10%</span></label>
+      <input type="range" min="0" max="50" value="10" id="taxSlider" oninput="updateTax(this.value)">
+      <label>Healthcare Spending: <span id="healthValue">50</span></label>
+      <input type="range" min="0" max="100" value="50" id="healthSlider" oninput="updateHealthcare(this.value)">
+      <label>Education Spending: <span id="eduValue">50</span></label>
+      <input type="range" min="0" max="100" value="50" id="eduSlider" oninput="updateEducation(this.value)">
+      <label>Environmental Policy: <span id="envValue">50</span></label>
+      <input type="range" min="0" max="100" value="50" id="envSlider" oninput="updateEnvironment(this.value)">
+    </div>
 
-<h2>Actions</h2>
-<button onclick="buildHospital()">Build Hospital ($200)</button>
-<button onclick="buildSchool()">Build School ($150)</button>
-<button onclick="improveRoads()">Improve Roads ($100)</button>
-<button onclick="adjustInterest()">Adjust Interest Rate</button>
-<button onclick="borrowIMF()">Borrow from IMF ($500)</button>
-<button onclick="repayIMF()">Repay IMF Debt</button>
-
-<h2>Policies</h2>
-<div class="policy">
-  <button onclick="setTax(10)">Set Income Tax: 10%</button>
-  <button onclick="setTax(20)">Set Income Tax: 20%</button>
-  <button onclick="setTax(30)">Set Income Tax: 30%</button>
-</div>
-
-<h2>Stats Graph</h2>
-<canvas id="statsChart" width="400" height="150"></canvas>
-
-<div id="log">Action Log:</div>
+    <div id="log" class="panel">Action Log:</div>
+    <canvas id="statsChart" width="400" height="150"></canvas>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Variables
-let money = 1000;
-let gdp = 5000;
-let happiness = 50;
-let health = 50;
-let education = 50;
-let imfDebt = 0;
-let interestRate = 2;
-let approval = 50;
-let taxRate = 10;
+let money=1000, gdp=5000, happiness=50, health=50, education=50;
+let imfDebt=0, interestRate=2, approval=50, turn=1;
+let incomeTax=10, healthcare=50, educationSpend=50, environment=50;
+let goals=[{text:"Build 1 Hospital", type:"hospital", completed:false, reward:50},
+           {text:"Build 1 School", type:"school", completed:false, reward:40},
+           {text:"Improve Roads", type:"roads", completed:false, reward:30}];
+let currentGoalIndex=0;
+let statsChart;
 
-// Goal system
-let goals = [
-  {text:"Build 1 Hospital", type:"hospital", completed:false, reward:50},
-  {text:"Build 1 School", type:"school", completed:false, reward:40},
-  {text:"Improve Roads", type:"roads", completed:false, reward:30}
-];
-let currentGoalIndex = 0;
-
-function updateGoal(){
-  if(currentGoalIndex<goals.length){
-    document.getElementById("goal").innerText = "Goal: "+goals[currentGoalIndex].text;
-  } else {
-    document.getElementById("goal").innerText = "All goals completed!";
-  }
-}
-
-// Display update
+// Update display
 function updateDisplay(){
-  document.getElementById("money-display").innerText = "Money: $"+money;
-  document.getElementById("gdp-display").innerText = "GDP: $"+gdp;
-  document.getElementById("happiness-display").innerText = "Happiness: "+happiness;
-  document.getElementById("health-display").innerText = "Health: "+health;
-  document.getElementById("education-display").innerText = "Education: "+education;
-  document.getElementById("imf-display").innerText = "IMF Debt: $"+imfDebt;
-  document.getElementById("interest-display").innerText = "Interest Rate: "+interestRate+"%";
-  document.getElementById("approval").innerText = "Approval Rating: "+approval+"%";
-  updateGoal();
+  document.getElementById("money").innerText="Money: $"+money;
+  document.getElementById("gdp").innerText="GDP: $"+gdp;
+  document.getElementById("happiness").innerText="Happiness: "+happiness;
+  document.getElementById("health").innerText="Health: "+health;
+  document.getElementById("education").innerText="Education: "+education;
+  document.getElementById("approval").innerText="Approval: "+approval+"%";
+  document.getElementById("imf").innerText="IMF Debt: $"+imfDebt;
+  document.getElementById("turn").innerText="Turn: "+turn;
 }
 
 // Log
-function logAction(text){
-  const logDiv = document.getElementById("log");
-  logDiv.innerHTML = text+"<br>"+logDiv.innerHTML;
-}
+function logAction(text){const logDiv=document.getElementById("log"); logDiv.innerHTML="Turn "+turn+": "+text+"<br>"+logDiv.innerHTML;}
 
-// Random Events
-function randomEvent(){
-  const events = [
-    {text:"Economic boom! +$200 money, +5 happiness", action:()=>{money+=200;happiness+=5;}},
-    {text:"Protests! -10 happiness, -$100 money", action:()=>{happiness-=10;money-=100;}},
-    {text:"Natural disaster! -20 health, -$150 money", action:()=>{health-=20;money-=150;}},
-    {text:"Political scandal! -5 approval, -$50 money", action:()=>{approval-=5;money-=50;}}
-  ];
-  if(Math.random()<0.3){
-    const e = events[Math.floor(Math.random()*events.length)];
-    e.action();
-    logAction("Random Event: "+e.text);
-  }
-}
+// Random events
+function randomEvent(){const events=[
+  {text:"Economic boom! +$200 money, +5 happiness", action:()=>{money+=200;happiness+=5;}},
+  {text:"Protests! -10 happiness, -$100 money", action:()=>{happiness-=10;money-=100;}},
+  {text:"Natural disaster! -20 health, -$150 money", action:()=>{health-=20;money-=150;}},
+  {text:"Political scandal! -5 approval, -$50 money", action:()=>{approval-=5;money-=50;}}
+]; if(Math.random()<0.3){const e=events[Math.floor(Math.random()*events.length)]; e.action(); logAction("Random Event: "+e.text);}}
 
 // Goal check
-function checkGoal(type){
-  if(currentGoalIndex<goals.length && goals[currentGoalIndex].type===type && !goals[currentGoalIndex].completed){
-    goals[currentGoalIndex].completed=true;
-    money+=goals[currentGoalIndex].reward;
-    logAction("Goal Completed: "+goals[currentGoalIndex].text+" (+$"+goals[currentGoalIndex].reward+")");
-    currentGoalIndex++;
-  }
-}
+function checkGoal(type){if(currentGoalIndex<goals.length && goals[currentGoalIndex].type===type && !goals[currentGoalIndex].completed){goals[currentGoalIndex].completed=true; money+=goals[currentGoalIndex].reward; logAction("Goal Completed: "+goals[currentGoalIndex].text+" (+$"+goals[currentGoalIndex].reward+")"); currentGoalIndex++;}}
 
 // Actions
-function buildHospital(){ if(money>=200){ money-=200; health+=15; happiness+=5; gdp+=50; logAction("Hospital built!"); checkGoal("hospital"); randomEvent(); updateDisplay(); } else {alert("Not enough money!");} }
-function buildSchool(){ if(money>=150){ money-=150; education+=15; happiness+=3; gdp+=40; logAction("School built!"); checkGoal("school"); randomEvent(); updateDisplay(); } else {alert("Not enough money!");} }
-function improveRoads(){ if(money>=100){ money-=100; happiness+=2; gdp+=30; logAction("Roads improved!"); checkGoal("roads"); randomEvent(); updateDisplay(); } else {alert("Not enough money!");} }
+function buildHospital(){if(money>=200){money-=200; health+=15; happiness+=5; gdp+=50; logAction("Hospital built!"); checkGoal("hospital"); endTurn();}else{alert("Not enough money!");}}
+function buildSchool(){if(money>=150){money-=150; education+=15; happiness+=3; gdp+=40; logAction("School built!"); checkGoal("school"); endTurn();}else{alert("Not enough money!");}}
+function improveRoads(){if(money>=100){money-=100; happiness+=2; gdp+=30; logAction("Roads improved!"); checkGoal("roads"); endTurn();}else{alert("Not enough money!");}}
 
 // Central Bank
-function adjustInterest(){ let newRate=prompt("Set new interest rate (0-10%):",interestRate); newRate=parseFloat(newRate); if(!isNaN(newRate)&&newRate>=0&&newRate<=10){ interestRate=newRate; logAction("Interest rate set to "+interestRate+"%"); gdp+=Math.floor((5-interestRate)*10); randomEvent(); updateDisplay(); } else {alert("Invalid rate!");} }
+function adjustInterest(){let newRate=prompt("Set interest rate 0-10%",interestRate); newRate=parseFloat(newRate); if(!isNaN(newRate)&&newRate>=0&&newRate<=10){interestRate=newRate; logAction("Interest set to "+interestRate+"%"); endTurn();}else{alert("Invalid rate!");}}
 
 // IMF
-function borrowIMF(){ money+=500; imfDebt+=500; logAction("Borrowed $500 from IMF"); randomEvent(); updateDisplay(); }
-function repayIMF(){ if(money>=imfDebt && imfDebt>0){ money-=imfDebt; logAction("Repaid IMF Debt: $"+imfDebt); imfDebt=0; randomEvent(); updateDisplay(); } else if(imfDebt===0){alert("No IMF debt to repay.");} else {alert("Not enough money!");} }
+function borrowIMF(){money+=500; imfDebt+=500; logAction("Borrowed $500 from IMF"); endTurn();}
+function repayIMF(){if(money>=imfDebt && imfDebt>0){money-=imfDebt; logAction("Repaid IMF Debt: $"+imfDebt); imfDebt=0; endTurn();} else if(imfDebt===0){alert("No IMF debt.");} else {alert("Not enough money!");}}
 
-// Policies
-function setTax(rate){ taxRate=rate; money+=Math.floor(gdp*rate/100); happiness-=rate/10; logAction("Income tax set to "+rate+"%, collected $"+Math.floor(gdp*rate/100)); updateDisplay(); }
+// Sliders
+function updateTax(val){incomeTax=parseInt(val); document.getElementById("taxValue").innerText=val+"%";}
+function updateHealthcare(val){healthcare=parseInt(val); document.getElementById("healthValue").innerText=val;}
+function updateEducation(val){educationSpend=parseInt(val); document.getElementById("eduValue").innerText=val;}
+function updateEnvironment(val){environment=parseInt(val); document.getElementById("envValue").innerText=val;}
 
-// Approval system (simple)
-function updateApproval(){ approval=Math.floor((happiness+education+health)/3); updateDisplay(); }
-
-// Stats Graph
-let statsChart;
-function updateChart(){
-  const ctx = document.getElementById('statsChart').getContext('2d');
-  if(!statsChart){
-    statsChart = new Chart(ctx,{
-      type:'line',
-      data:{
-        labels: [0],
-        datasets:[
-          {label:'Money', data:[money], borderColor:'yellow', fill:false},
-          {label:'GDP', data:[gdp], borderColor:'green', fill:false},
-          {label:'Happiness', data:[happiness], borderColor:'red', fill:false},
-          {label:'Health', data:[health], borderColor:'blue', fill:false},
-          {label:'Education', data:[education], borderColor:'orange', fill:false}
-        ]
-      },
-      options:{responsive:true, animation:false, scales:{y:{beginAtZero:true}}}
-    });
-  } else {
-    statsChart.data.labels.push(statsChart.data.labels.length);
-    statsChart.data.datasets[0].data.push(money);
-    statsChart.data.datasets[1].data.push(gdp);
-    statsChart.data.datasets[2].data.push(happiness);
-    statsChart.data.datasets[3].data.push(health);
-    statsChart.data.datasets[4].data.push(education);
-    statsChart.update();
-  }
+// Apply policies per turn
+function applyPolicies(){
+  let taxMoney = Math.floor(gdp*incomeTax/100);
+  money += taxMoney;
+  happiness -= incomeTax/10;
+  health += Math.floor(healthcare/10);
+  money -= Math.floor(healthcare/5);
+  education += Math.floor(educationSpend/10);
+  approval += Math.floor(educationSpend/20);
+  happiness += Math.floor(environment/20);
+  gdp -= Math.floor(environment/10);
 }
 
-// Update chart every action
-const originalLogAction = logAction;
-logAction = function(text){ originalLogAction(text); updateApproval(); updateChart(); };
+// Approval
+function updateApproval(){approval=Math.floor((happiness+education+health)/3);}
+
+// End turn
+function endTurn(){turn++; randomEvent(); applyPolicies(); updateApproval(); updateDisplay(); updateChart(); if(turn%10===0) election();}
+
+// Election
+function election(){logAction("ELECTION! Approval: "+approval+"%"); if(approval>=50){logAction("Won election! +$200, +$100 GDP"); money+=200; gdp+=100;} else{logAction("Lost election! -$100, -5 happiness"); money-=100; happiness-=5;}}
+
+// Chart
+function updateChart(){const ctx=document.getElementById('statsChart').getContext('2d'); if(!statsChart){statsChart=new Chart(ctx,{type:'line',data:{labels:[0],datasets:[{label:'Money', data:[money], borderColor:'yellow', fill:false},{label:'GDP', data:[gdp], borderColor:'green', fill:false},{label:'Happiness', data:[happiness], borderColor:'red', fill:false},{label:'Health', data:[health], borderColor:'blue', fill:false},{label:'Education', data:[education], borderColor:'orange', fill:false}]},options:{responsive:true,animation:false,scales:{y:{beginAtZero:true}}}});} else {statsChart.data.labels.push(statsChart.data.labels.length); statsChart.data.datasets[0].data.push(money); statsChart.data.datasets[1].data.push(gdp); statsChart.data.datasets[2].data.push(happiness); statsChart.data.datasets[3].data.push(health); statsChart.data.datasets[4].data.push(education); statsChart.update();}}
 
 // Initialize
-updateDisplay();
-updateChart();
+updateDisplay(); logAction("Game Start!"); updateChart();
 </script>
 
 </body>
