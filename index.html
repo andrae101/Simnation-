@@ -1,116 +1,234 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caribbean SimNation</title>
+<title>Simnation: Country Simulator</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; color: #222; }
-  .dark-mode { background-color: #121212; color: #eee; }
-  #top-bar { display: flex; justify-content: space-around; padding: 10px; background-color: #444; color: #fff; }
-  #top-bar.dark-mode { background-color: #222; }
-  #game { display: flex; height: calc(100vh - 50px); }
-  #sidebar { width: 250px; background-color: #ddd; padding: 10px; overflow-y: auto; }
-  #sidebar.dark-mode { background-color: #333; color: #eee; }
-  #main { flex-grow: 1; background-color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  #main.dark-mode { background-color: #1a1a1a; }
-  button { padding: 5px 10px; margin: 5px; cursor: pointer; }
-  .chart { width: 90%; max-width: 600px; height: 200px; margin: 10px; border: 1px solid #999; }
+body {
+  margin: 0;
+  font-family: 'Helvetica Neue', sans-serif;
+  background: #f0f2f5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+#game-container {
+  width: 95%;
+  max-width: 450px;
+  padding: 25px;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: white;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+h1 { font-size: 26px; margin-bottom: 10px; }
+.stat { margin: 8px 0; font-weight: bold; }
+button {
+  padding: 10px 20px;
+  margin: 10px 5px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  background-color: #ffdd59;
+  color: #333;
+  transition: transform 0.2s, background-color 0.2s;
+}
+button:hover { background-color: #ffd700; transform: scale(1.05); }
+#log { 
+  margin-top: 15px; 
+  background: rgba(255,255,255,0.2); 
+  padding: 10px; 
+  border-radius: 10px; 
+  max-height: 120px; 
+  overflow-y: auto; 
+  font-size: 12px;
+  text-align: left;
+}
+#goal { font-weight: bold; margin: 10px 0; font-size: 16px; }
 </style>
 </head>
 <body>
-<div id="top-bar">
-  <span>Country: <span id="country-name">Jamaica</span></span>
-  <span>GDP: $<span id="gdp">15300</span>M</span>
-  <span>Treasury: $<span id="treasury">5000</span>M</span>
-  <span>Population: <span id="population">3.3</span>M</span>
-  <button id="mode-toggle">Toggle Dark/Light</button>
+
+<div id="game-container">
+  <h1>Simnation: Country Simulator</h1>
+
+  <div class="stat" id="money-display">Money: $1000</div>
+  <div class="stat" id="gdp-display">GDP: $5000</div>
+  <div class="stat" id="happiness-display">Happiness: 50</div>
+  <div class="stat" id="health-display">Health: 50</div>
+  <div class="stat" id="education-display">Education: 50</div>
+  <div class="stat" id="imf-display">IMF Debt: $0</div>
+  <div class="stat" id="interest-display">Interest Rate: 2%</div>
+
+  <div id="goal">Goal: Build 1 Hospital</div>
+
+  <h2>Actions</h2>
+  <button onclick="buildHospital()">Build Hospital ($200)</button>
+  <button onclick="buildSchool()">Build School ($150)</button>
+  <button onclick="improveRoads()">Improve Roads ($100)</button>
+  <button onclick="adjustInterest()">Adjust Interest Rate</button>
+  <button onclick="borrowIMF()">Borrow from IMF ($500)</button>
+  <button onclick="repayIMF()">Repay IMF Debt</button>
+
+  <div id="log">Action Log:</div>
 </div>
-<div id="game">
-  <div id="sidebar">
-    <h3>Buildings</h3>
-    <button onclick="build('Residential')">Residential</button>
-    <button onclick="build('Commercial')">Commercial</button>
-    <button onclick="build('Industrial')">Industrial</button>
-    <button onclick="build('Power')">Power Plant</button>
-    <button onclick="build('Park')">Park</button>
-    <h3>Policies</h3>
-    <label>Tax Rate: <input type="range" id="tax" min="0" max="50" value="20">%</label>
-    <h3>Country Selector</h3>
-    <select id="country-select" onchange="changeCountry()">
-      <option>Jamaica</option>
-      <option>Barbados</option>
-      <option>Trinidad and Tobago</option>
-      <option>Bahamas</option>
-      <option>Haiti</option>
-      <option>Dominican Republic</option>
-    </select>
-  </div>
-  <div id="main">
-    <h2 id="leader-name">Leader: Andrew Holness</h2>
-    <div class="chart" id="gdp-chart">[GDP Chart]</div>
-    <div class="chart" id="pop-chart">[Population Chart]</div>
-    <div class="chart" id="treasury-chart">[Treasury Chart]</div>
-  </div>
-</div>
+
 <script>
-let dark = false;
-document.getElementById('mode-toggle').onclick = () => {
-  dark = !dark;
-  document.body.classList.toggle('dark-mode', dark);
-  document.getElementById('top-bar').classList.toggle('dark-mode', dark);
-  document.getElementById('sidebar').classList.toggle('dark-mode', dark);
-  document.getElementById('main').classList.toggle('dark-mode', dark);
-};
+// Game variables
+let money = 1000;
+let gdp = 5000;
+let happiness = 50;
+let health = 50;
+let education = 50;
+let imfDebt = 0;
+let interestRate = 2;
 
-const countries = {
-  "Jamaica": {gdp:15300, leader:"Andrew Holness", population:3.3},
-  "Barbados": {gdp:5800, leader:"Mia Mottley", population:0.3},
-  "Trinidad and Tobago": {gdp:23000, leader:"Keith Rowley", population:1.4},
-  "Bahamas": {gdp:12500, leader:"Philip Davis", population:0.4},
-  "Haiti": {gdp:900, leader:"Ariel Henry", population:11.5},
-  "Dominican Republic": {gdp:9600, leader:"Luis Abinader", population:11.0}
-};
+// Goals
+let goals = [
+  {text: "Build 1 Hospital", type:"hospital", completed:false, reward:50},
+  {text: "Build 1 School", type:"school", completed:false, reward:40},
+  {text: "Improve Roads", type:"roads", completed:false, reward:30}
+];
+let currentGoalIndex = 0;
 
-let currentCountry = "Jamaica";
-
-function changeCountry(){
-  const select = document.getElementById('country-select');
-  currentCountry = select.value;
-  const data = countries[currentCountry];
-  document.getElementById('country-name').innerText = currentCountry;
-  document.getElementById('leader-name').innerText = "Leader: " + data.leader;
-  document.getElementById('gdp').innerText = data.gdp;
-  document.getElementById('population').innerText = data.population;
-}
-
-function build(type){
-  const data = countries[currentCountry];
-  let cost = 0;
-  if(type==="Residential") cost = 50;
-  if(type==="Commercial") cost = 100;
-  if(type==="Industrial") cost = 120;
-  if(type==="Power") cost = 200;
-  if(type==="Park") cost = 30;
-  if(data.gdp >= cost){
-    data.gdp += Math.round(cost*0.5); // increase GDP slightly
-    document.getElementById('gdp').innerText = data.gdp;
-    alert(type + " built in " + currentCountry + "! GDP increased.");
+function updateGoal() {
+  if(currentGoalIndex < goals.length){
+    document.getElementById("goal").innerText = "Goal: " + goals[currentGoalIndex].text;
   } else {
-    alert("Not enough GDP to build " + type);
+    document.getElementById("goal").innerText = "All goals completed!";
   }
 }
 
-// Simple adaptive economy: GDP decreases slightly if tax > 30%
-setInterval(()=>{
-  const tax = document.getElementById('tax').value;
-  const data = countries[currentCountry];
-  if(tax>30){
-    data.gdp -= Math.round(data.gdp*0.01);
-    document.getElementById('gdp').innerText = data.gdp;
+// Display update
+function updateDisplay() {
+  document.getElementById("money-display").innerText = "Money: $" + money;
+  document.getElementById("gdp-display").innerText = "GDP: $" + gdp;
+  document.getElementById("happiness-display").innerText = "Happiness: " + happiness;
+  document.getElementById("health-display").innerText = "Health: " + health;
+  document.getElementById("education-display").innerText = "Education: " + education;
+  document.getElementById("imf-display").innerText = "IMF Debt: $" + imfDebt;
+  document.getElementById("interest-display").innerText = "Interest Rate: " + interestRate + "%";
+  updateGoal();
+}
+
+// Action Log
+function logAction(text) {
+  const logDiv = document.getElementById("log");
+  logDiv.innerHTML = text + "<br>" + logDiv.innerHTML;
+}
+
+// Random Event System
+function randomEvent() {
+  const events = [
+    {text: "Economic boom! +$200 money, +5 happiness", action:()=>{
+      money += 200; happiness += 5;
+    }},
+    {text: "Protests! -10 happiness, -$100 money", action:()=>{
+      happiness -= 10; money -= 100;
+    }},
+    {text: "Natural disaster! -20 health, -$150 money", action:()=>{
+      health -= 20; money -= 150;
+    }}
+  ];
+  if(Math.random() < 0.3){ // 30% chance of event
+    const e = events[Math.floor(Math.random()*events.length)];
+    e.action();
+    logAction("Random Event: " + e.text);
   }
-}, 5000);
+}
+
+// Check Goal Completion
+function checkGoal(type) {
+  if(currentGoalIndex < goals.length && goals[currentGoalIndex].type === type && !goals[currentGoalIndex].completed){
+    goals[currentGoalIndex].completed = true;
+    money += goals[currentGoalIndex].reward;
+    logAction("Goal Completed: " + goals[currentGoalIndex].text + " (+$" + goals[currentGoalIndex].reward + ")");
+    currentGoalIndex++;
+  }
+}
+
+// Actions
+function buildHospital() {
+  if(money >= 200){
+    money -= 200;
+    health += 15;
+    happiness += 5;
+    gdp += 50;
+    logAction("Hospital built! Health +15, Happiness +5");
+    checkGoal("hospital");
+    randomEvent();
+    updateDisplay();
+  } else { alert("Not enough money!"); }
+}
+
+function buildSchool() {
+  if(money >= 150){
+    money -= 150;
+    education += 15;
+    happiness += 3;
+    gdp += 40;
+    logAction("School built! Education +15, Happiness +3");
+    checkGoal("school");
+    randomEvent();
+    updateDisplay();
+  } else { alert("Not enough money!"); }
+}
+
+function improveRoads() {
+  if(money >= 100){
+    money -= 100;
+    happiness += 2;
+    gdp += 30;
+    logAction("Roads improved! Happiness +2, GDP +30");
+    checkGoal("roads");
+    randomEvent();
+    updateDisplay();
+  } else { alert("Not enough money!"); }
+}
+
+// Central Bank
+function adjustInterest() {
+  let newRate = prompt("Set new interest rate (0-10%):", interestRate);
+  newRate = parseFloat(newRate);
+  if(!isNaN(newRate) && newRate >= 0 && newRate <=10){
+    interestRate = newRate;
+    logAction("Interest rate set to " + interestRate + "%");
+    gdp += Math.floor((5-interestRate)*10);
+    randomEvent();
+    updateDisplay();
+  } else { alert("Invalid rate!"); }
+}
+
+// IMF
+function borrowIMF() {
+  money += 500;
+  imfDebt += 500;
+  logAction("Borrowed $500 from IMF");
+  randomEvent();
+  updateDisplay();
+}
+
+function repayIMF() {
+  if(money >= imfDebt && imfDebt >0){
+    money -= imfDebt;
+    logAction("Repaid IMF Debt: $" + imfDebt);
+    imfDebt = 0;
+    randomEvent();
+    updateDisplay();
+  } else if(imfDebt===0){
+    alert("No IMF debt to repay.");
+  } else {
+    alert("Not enough money to repay IMF debt.");
+  }
+}
+
+// Initialize display
+updateDisplay();
 </script>
+
 </body>
 </html>
